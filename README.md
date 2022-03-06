@@ -1,3 +1,17 @@
+보안을 위해 jwt 만료시간을 20초로 잡으면  
+유저가 다음 pricate route에 토큰으로 request를 보낼때 토큰이 만료됬기 때문에  
+로그인을 계속 해주어야 한다❗
+
+=> access token 과 refresh token 을 같이 만들었다.  
+=> refresh token은 저장소에도 보관하고 access token 과 refresh token 을 같이 보냈다.  
+=> 만료된 access token으로 request하고 서버가 토큰이 만료됬음을 알려주면 client 에서 자동으로  
+=> post/ refresh route로 refresh token 을 body 에 담아 보냈다.  
+=> 받아온 refresh token을 저장소와 비교하고 유효성 검사를 한다.  
+=> 받아온 refresh token을 저장소에서 제거하고  
+=> 새로운 access token 과 새로운 refresh token 을 같이 만들어 새로운 refresh token은 저장소애 보관후  
+=> client에 둘다 보내주었다.  
+=> post/ logout 할때 req.headers 에서 access token 과 body 에서 refresh token 을 받은후 refresh token 저장소 비워준다
+
 **인증과 인가**
 
 1. 인증하기(로그인) Request Header
@@ -13,6 +27,9 @@ Local Storage vs Session Storage vs Cookies
 
 **session 과 cookies**
 
+- 서버는 response에 브라우저에 저장하고자 하는 쿠키를 보낼수있다.
+- 브라우저에 쿠키를 저장한 후, 해당 웹사이트에 방문할 때마다 브라우저는 해당 쿠키도 요청과 함께 보낸다.
+
 1. 회원가입후 로그인(인증)할때 정보가 맞으면 서버는 너의 session id을 만들고 서버메모리에 저장한다.
 
 2. 너의 session id를 cookie에 실어 보낸다.
@@ -25,7 +42,7 @@ Local Storage vs Session Storage vs Cookies
 5. 응답을 보낸다.
 
 - **단점**
-- 한번 인증해서 sesstion을 받았을때 담음요청은 sesstion으로만 요청 하게된다.
+- 한번 인증해서 sesstion을 받았을때 다음요청은 sesstion으로만 요청 하게된다.
 - 서버를 여러개 두었을 경우 서버 하나당 자체에서 세션을 관리하고 있을경우 문제가 생긴다.
 - 세션 저장소라는곳을 만들어 한곳에서 관리 할수있다.
 - client가 많아질경우 서버과부하

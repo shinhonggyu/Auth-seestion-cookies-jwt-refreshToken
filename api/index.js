@@ -1,61 +1,36 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 app.use(express.json());
 
 const users = [
   {
-    id: '1',
-    username: 'john',
-    password: 'john0908',
+    id: "1",
+    username: "john",
+    password: "john0908",
     isAdmin: true,
   },
   {
-    id: '2',
-    username: 'jane',
-    password: 'jane0908',
+    id: "2",
+    username: "jane",
+    password: "jane0908",
     isAdmin: false,
   },
 ];
 
-const verify = (req, res, next) => {
-  // Bearer Token
-  const authHeader = req.headers.authorization;
-  if (authHeader) {
-    // token
-    const token = authHeader.split(' ')[1];
-
-    jwt.verify(token, 'mySecretKey', (err, user) => {
-      if (err) {
-        res.status(403).json('Token is not valid!');
-      }
-      // assign this user
-      req.user = user;
-      next();
-    });
-  } else {
-    res.status(401).json('You are not authenticated!');
-  }
-};
-
 let refreshTokens = [];
 
-app.post('/api/refresh', (req, res) => {
+app.post("/api/refresh", (req, res) => {
   // take the refresh token from the user
   const refreshToken = req.body.token;
-
   // send error if there is no token or it's invalid
-  if (!refreshToken) {
-    return res.status(401).json('You are not authenticated!');
-  }
-  if (!refreshTokens.includes(refreshToken)) {
-    return res.status(403).json('Refresh token is not valid!');
+  if (!refreshToken) return res.status(401).json("You are not authenticated!");
+  if (refreshTokens.indexOf(refreshToken) === -1) {
+    return res.status(403).json("Refresh token is not valid");
   }
 
-  jwt.verify(refreshToken, 'myRefreshSecretKey', (err, user) => {
-    if (err) {
-      res.status(403).json('Token is not valid!');
-    }
+  jwt.verify(refreshToken, "myRefreshSecretkey", (err, user) => {
+    err && console.log(err);
     refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
 
     const newAccessToken = generateAccessToken(user);
@@ -68,30 +43,26 @@ app.post('/api/refresh', (req, res) => {
       refreshToken: newRefreshToken,
     });
   });
-
-  // if everything is ok, create new access token, (refresh token and send to user)
+  // if everyting is ok, create new access token, refresh token and send to user.
 });
 
 const generateAccessToken = (user) => {
-  return jwt.sign({ id: user.id, isAdmin: user.isAdmin }, 'mySecretKey', {
-    expiresIn: '15m',
+  return jwt.sign({ id: user.id, isAdmin: user.isAdmin }, "mySecretkey", {
+    expiresIn: "5s",
   });
 };
 
 const generateRefreshToken = (user) => {
-  return jwt.sign({ id: user.id, isAdmin: user.isAdmin }, 'myRefreshSecretKey');
+  return jwt.sign({ id: user.id, isAdmin: user.isAdmin }, "myRefreshSecretkey");
 };
 
-// LOGIN
-app.post('/api/login', (req, res) => {
+app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
-  const user = users.find((user) => {
-    return user.username === username && user.password === password;
-  });
+  const user = users.find(
+    (user) => user.username === username && user.password === password
+  );
   if (user) {
-    // Generate an access token
     const accessToken = generateAccessToken(user);
-    // Generate an refresh token
     const refreshToken = generateRefreshToken(user);
     refreshTokens.push(refreshToken);
 
@@ -102,27 +73,41 @@ app.post('/api/login', (req, res) => {
       refreshToken,
     });
   } else {
-    return res.status(400).json('Username or password incorrect!');
+    res.status(400).json("Username or password incorrect!");
   }
 });
 
-// LOGOUT
-app.post('/api/logout', verify, (req, res) => {
+const verify = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const token = authHeader.split(" ")[1];
+
+    jwt.verify(token, "mySecretkey", (err, user) => {
+      if (err) {
+        return res.status(403).json("Token is not valid");
+      }
+
+      req.user = user;
+      next();
+    });
+    console.log("token이 유효하지 않아도 도달하는가?");
+  } else {
+    res.status(401).json("You are not authenticated!");
+  }
+};
+
+app.delete("/api/users/:userId", verify, (req, res) => {
+  if (req.user.id === req.params.userId || req.user.isAdmin) {
+    res.status(200).json("User has been deleted");
+  } else {
+    res.status(401).json("You are not allowed to delete this user!");
+  }
+});
+
+app.post("/api/logout", verify, (req, res) => {
   const refreshToken = req.body.token;
   refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
-  res.status(200).json('You logged out successfully.');
+  res.status(200).json("You logged out successfully.");
 });
 
-//DELETE
-app.delete('/api/users/:userId', verify, (req, res) => {
-  if (req.user.id === req.params.userId || req.user.isAdmin) {
-    res.status(200).json('User has been deleted...');
-  } else {
-    res.status(403).json('You are not allowed to delete this user!');
-  }
-});
-
-//LISTEN
-app.listen(5000, () => {
-  console.log('Backend server is running');
-});
+app.listen(5000, () => console.log("Backend server is running..."));
